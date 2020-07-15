@@ -18,6 +18,15 @@ PRN = 0b01000111  # PRN R0
     # Takes in 2 arguments: regA and regB: multiplies the values stored in both registers and stores the result in regA
 MUL = 0b10100010
 
+# PUSH
+    # Takes in 1 argument: given register for copying value from this register to add to the stack 
+PUSH = 0b01000101
+
+# POP
+    # Pops the value at top of the stack into given register
+        # Takes in 1 argument: the given stack the value gets put into
+POP = 0b01000110
+
 
 class CPU:
     """Main CPU class."""
@@ -36,8 +45,15 @@ class CPU:
         self.pc = 0
         # Adding running (decides whether our CPU runs or not) as attribute so its availble for our modular func instruction methods 
         self.running = True
+        # Adding our Stack pointer so both PUSH and POP functions can use this attribute
+            # remember: the SP points to the address in memory and this address holds our most recently element of the stack
+            # Setting the number 7 which is the register_number that holds the address of our SP 
+        self.stack_pointer = 7
+        #Register 7 holds the address of our SP if the stack is empty: we assign R7 to the SP's address which is F4 
+        self.reg[self.stack_pointer] = 0xf4
+
         # Setting up my branchtable to beautify my run() if/else chains
-            # Each key in this branchtable for all the instructions is the instruction number (decimal of the binary string)
+        # Each key in this branchtable for all the instructions is the instruction number (decimal of the binary string)
         self.branchtable = {}
         # Passing in HLT as key to branch_table dict with value as the function for HLT
         self.branchtable[HLT] = self.HLT
@@ -48,6 +64,11 @@ class CPU:
         # Passing in MUL as key to branch_table dict with value as the function for MUL
         self.branchtable[MUL] = self.MUL
         # print(self.branchtable, 'BT')
+        # Passing in PUSH as key to branch_table dict with value as the function for PUSH
+        self.branchtable[PUSH] = self.PUSH
+        # Passing in POP as key to branch_table dict with value as the function for POP
+        self.branchtable[POP] = self.POP
+
 
         
 
@@ -152,13 +173,16 @@ class CPU:
     # LDI func
     #Stores value (constant integer value) of 8 (held at instruc_b) at register one (register one held at instruc_a as has console num is 0)
     def LDI(self):
-        # As well as acessing the desired address in self.pc, we have some instructions that use the next 2 bytes of data (the next two indexes along from the initial desired address in the self.pc) as we want to perform operations on this data
-        # The values at these extra addresses could be either a register number, or a constant value 
-        # Use the 2 ram methods to read the values (bytes) at these extra addresses (we can access location of these addresses by simply using pc+1 and pc+2)
+        # When carrying out this instruction, self.pc will point to this instruction number
+            # This instruction has two arguments (3 bytes long inluding the instruction number)
+            # So to access its other two arguments, they can be found at pc+1 for the first arg and pc+2 for the second argument as both values held at these addresses are needed for this isntruction
+            # One value gives us the register number (instrucA)
+            # The other value we need is a constant value (instrucB)
+        
         # instruc_a is our reg number (reg0)
         instruc_a = self.ram_read(self.pc + 1)
         # print(instruc_a, 'a, this data/value is a register number')
-        # instruc_b is our value we want to want to store at reg0 (instruc_a), this value is a constant number
+        # instruc_b is our value we want to want to store at the register number (instruc_a)
         instruc_b = self.ram_read(self.pc + 2)
         self.reg[instruc_a] = instruc_b
         self.pc += 3
@@ -166,7 +190,8 @@ class CPU:
     # PRN func
     # Prints the value (8) held at register 0 (instruc_a)
     def PRN(self):
-        # instruc_a is our reg number (reg0)
+        # When carrying out this instruction, self.pc will point to this instruction number
+            # This instruction has one argument, which is the register number(reg0), which can be accessed by pc+1, which gives us the value stored at that reg0's address
         instruc_a = self.ram_read(self.pc + 1)
         print(self.reg[instruc_a])
         # Increment by 2 as 2 byte instructions
@@ -175,12 +200,62 @@ class CPU:
     # MUL func
     # Calls the alu() func (carries out maths)
     def MUL(self):
+        # When carrying out this instruction self.pc will point to this instruction number
+            # the 2 args that follow this instruc. numb in the spec are regA and regB, which can be accessed by doing pc+1 and pc+2, so both instruc variables gives us the value held at both of these registers 
         instruc_a = self.ram_read(self.pc + 1)
         instruc_b = self.ram_read(self.pc + 2)
         # Pass in type of operation (MUL), registerA(instrucA), registerB(instrucB)
         self.alu("MUL", instruc_a, instruc_b)
         # It's 2 arguments plus instruction so have to increment pc by 3
         self.pc += 3
+
+
+    # PUSH func
+        # Pushes a value in the given register on the stack
+    def PUSH(self):
+        # 1. Decrement SP 
+            # Register 7 which points to our SP (the address), the SP's address gets decremented 
+        self.reg[self.stack_pointer] -= 1
+        # We need to find the register that we need to copy value from
+            # We do this by finding the register number from our RAM
+            # as self.pc points to our instruction (PUSH) so self.pc + 1 gets the one/only argument the instruction has, which is the register number
+        reg_num = self.ram[self.pc + 1]
+        # Now we have the number as the index to put into our self.reg, which gets us the value that this particular register stores (as we want to add this value to the stack)
+        value = self.reg[reg_num]
+
+        # The address of the top of the stack is register7 (where we want to insert our value into), the address is 
+
+        # The address at the top of the stack is what register7 points too (F3), so our top_stack_adress = F3, as this is the address that the SP points too and this address stores the value of the element at top of stack
+            # It's now F3 as we decremented the SP from F4 -> F3
+        top_of_stack_address = self.reg[self.stack_pointer]
+        # print(top_of_stack_address)
+        # Assign the address F4 in RAM to the value we want to add which is the value we got from our specified register
+        self.ram[top_of_stack_address] = value
+        # 2 byte instruction:
+        self.pc += 2
+    
+    # POP func
+        # Pops the value at the top of the stack into the given register
+    def POP(self):
+        # The address at the top of the stack is what register7 points too (F3), so our top_stack_adress = F3, as this is the address that the SP points too and this address stores the value of the element at top of stack 
+        top_of_stack_address = self.reg[self.stack_pointer]
+        # Get the value that is stored at this address in RAM (value being the last element added to the stack)
+        value_at_sp = self.ram[top_of_stack_address]
+        # print(value_at_sp)
+        # Get the address of the given register to put our value in 
+        # self.pc + 1 points to the register number we need to put this value we pop off the stack into 
+        reg_num = self.ram[self.pc + 1]
+        # Assining this value to the given register 
+        self.reg[reg_num] = value_at_sp
+
+        # Increment SP: the address in memory that the SP points to gets incremented
+            # Our register number that holds the address that the SP points too, now this register holds the new incremented address that the SP points to 
+        self.reg[self.stack_pointer] +=1
+
+        # 2 byte instruction
+        self.pc+=2 
+
+
 
 
     def trace(self):

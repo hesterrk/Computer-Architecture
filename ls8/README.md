@@ -296,7 +296,11 @@ a high address) and grows _downward_ as things are pushed on. The LS-8 is no
 exception to this.
 
 Implement a system stack per the spec. Add `PUSH` and `POP` instructions. Read
-  the beginning of the spec to see which register is the stack pointer. 
+  the beginning of the spec to see which register is the stack pointer:
+ ==> The SP points at the value at the top of the stack (most recently pushed), or at
+address `F4` if the stack is empty
+:R7 is reserved as the stack pointer (SP): R7 contains a value which is the index into RAM for the top of the stack
+
   
 * Values themselves should be saved in the ***portion of RAM*** _that is allocated for the stack_. 
   -  Use the stack pointer to modify the correct block of memory. 
