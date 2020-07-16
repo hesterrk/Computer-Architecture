@@ -27,6 +27,22 @@ PUSH = 0b01000101
         # Takes in 1 argument: the given stack the value gets put into
 POP = 0b01000110
 
+# CALL 
+    # Calls a subroutine (function) at the address stored in the register
+        # Takes in one argument: the register that stores the address of the subroutine
+CALL = 0b01010000
+
+# RET 
+    # Pops the value from the top of the stack and stores it in the `PC` so the PC goes to where we last left off
+    # Takes no arguments 
+
+RET = 0b00010001
+
+# ADD: part of call.ls8 program
+    # Instruction is handled by the ALU
+    # Adds the value in two registers and store the result in regA
+ADD = 0b10100000
+
 
 class CPU:
     """Main CPU class."""
@@ -68,9 +84,14 @@ class CPU:
         self.branchtable[PUSH] = self.PUSH
         # Passing in POP as key to branch_table dict with value as the function for POP
         self.branchtable[POP] = self.POP
+        # Passing in CALL as key to branch_table dict with value as the function for CALL
+        self.branchtable[CALL] = self.CALL
+        # Passing in RET as key to branch_table dict with value as the function for RET
+        self.branchtable[RET] = self.RET
+        # Passing in ADD as key to branch_table dict with value as the function for ADD
+        self.branchtable[ADD] = self.ADD
 
 
-        
 
     def load(self, filename):
         """Load a program into memory."""
@@ -118,7 +139,6 @@ class CPU:
             # Run python3 ls8.py examples/print8.ls8 to test it prints 8
     
 
-    
 
     # Added Context for both read and write funcs:
     # Inside the CPU, there are two internal registers used for memory operations:
@@ -148,7 +168,7 @@ class CPU:
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
-
+        # ADD operation 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
 
@@ -253,10 +273,60 @@ class CPU:
         self.reg[self.stack_pointer] +=1
 
         # 2 byte instruction
-        self.pc+=2 
+        self.pc += 2
+        
+    
+    # CALL func
+        # Calls a subroutine (function) at the address stored in the register
+    def CALL(self):
+    # 1. Get the address of the next instruction (after CALL), to push onto the stack so when we can return to this instruction's address when the subroutine func finishes 
+        # The address is pc + 2 as CALL is a 2 byte instruction
+        next_instruc_address = self.pc + 2
+        # Decrement the SP as pushing to stack
+        self.reg[self.stack_pointer] -= 1
+        # Get address for top of stack (where SP is)
+        top_of_stack_address = self.reg[self.stack_pointer]
+        # Get this address in memory and store this next_instr_address at the top of the stack
+        self.ram[top_of_stack_address] = next_instruc_address
+
+    
+    # 2. Need to set the PC to the address of our subroutine address so the PC can jump to this address when we hit the CALL instruction
+        # This subroutine address is held in a given register
+        # We can find this register from our instruction's argument which tells us the register number by pc + 1
+        reg_num = self.ram[self.pc + 1]
+        # We get the value (address of subroutine) out of this register
+        address_subroutine = self.reg[reg_num]
+        # Set the PC to this address 
+        self.pc = address_subroutine
+
+    
+    # RET func
+        # Pops the value from the top of the stack and stores it in the `PC` so the PC goes to where we last left off 
+    def RET(self):
+        # Get address of top of stack
+        top_of_stack_address = self.reg[self.stack_pointer]
+        # Get value held at top of stack
+        value_at_sp = self.ram[top_of_stack_address]
+        # Increment SP: the address in memory that the SP points to gets incremented
+        self.reg[self.stack_pointer] += 1
+        # Assign pc to this value 
+        self.pc = value_at_sp
+
+    
+     # ADD func
+    # Calls the alu() func (carries out maths)
+    def ADD(self):
+        # When carrying out this instruction self.pc will point to this instruction number
+            # the 2 args that follow this instruc. numb in the spec are regA and regB, which can be accessed by doing pc+1 and pc+2, so both instruc variables gives us the value held at both of these registers 
+        instruc_a = self.ram_read(self.pc + 1)
+        instruc_b = self.ram_read(self.pc + 2)
+        # Pass in type of operation (ADD), registerA(instrucA), registerB(instrucB)
+        self.alu("ADD", instruc_a, instruc_b)
+        # It's 2 arguments plus instruction so have to increment pc by 3
+        self.pc += 3
 
 
-
+    
 
     def trace(self):
         """
@@ -371,15 +441,14 @@ class CPU:
             # When we run the run() func, the value that gets assigned to instruc_register changes depending on what file we are running, AND this variable refers to the current instruction value (will be a number) that is being run in this particular file 
             # e.g if we run print8.ls8, the IR would refer to the first instruction in the file: the LDI instruction (3 instructions long)
             instruc_register = self.ram_read(self.pc)
-            # print(instruc_register, 'the value of currently executing instruction')
+         
 
             # Depending on which program (filename) we run in the command line, the instruc_register variable refers to the key of the instruction (key of the instructor gives us its instruction number)
                 #e.g if we run the program python3 ls8.py examples/mult.ls8 --> runs the 'mult.ls8' file this gets put into the load() func: which has the LDI, MUL, PRN and HLT instructions, each of these key's (and these keys point to the instruction number) are pointed to by instruc_register when we run this file (when run() func gets called - this happens after we call load())
                 # The result of accessing each of these instruction keys/numbers one at a time from our branch_table dict, is that each instruction calls/returns its function(altogether 4 functions) and resulting in our answer--> 72
                 #e.g when print8.ls file gets typed into comand line, the load func opens this file reads the instructions, saves each instruction number in memory, then when the run() func gets called, each instruction in this file: which has LDI, PRN and HLT, gets assigned as the value of instruc_register (to become the key to our branch_table) which calls one-by-one each of the LDI, PRN and HLT funcions, resulting in our answer --> 8
+           
             self.branchtable[instruc_register]()
-            # print(self.branchtable[instruc_register])
-
 
             # Check if the instruc_register is not in our branch_table dict
             if instruc_register not in self.branchtable:

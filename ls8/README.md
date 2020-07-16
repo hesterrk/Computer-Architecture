@@ -355,6 +355,10 @@ If you run `python3 ls8.py examples/call.ls8` you should see the output:
 
 ## Stretch Goal: Timer Interrupts
 
+--> IRET instruction:
+:return from interupt handler
+
+
 Add interrupts to the LS-8 emulator.
 
 **You must have implemented a CPU stack before doing this.**
