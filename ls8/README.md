@@ -435,6 +435,7 @@ Bitwise-AND the IM register with the IS register. This masks out all the
 interrupts we're not interested in, leaving the ones we are interested in:
 
 ```python
+--> All the possible interputs against the ones that are actually active 
 masked_interrupts = cpu.reg[IM] & cpu.reg[IS]
 ```
 
@@ -452,6 +453,32 @@ for i in range(8):
 executing the current instruction as per usual.)
 
 If `interrupt_happened`, check the LS-8 spec for details on what to do.
+
+
+EXTRA COMMENTS
+
+
+
+ 
+Stop further checking of maskedInterrupts 
+ 
+ If a bit is set and can interrupt now 
+ Disable further interrupts 
+ Clear the bit in the IS register 
+ The PC register is pushed on the stack ´
+ The FL register is pushed on the stack 
+ Registers R0-R6 are pushed on the stack in that order 
+ 
+ The address / vector of the appropriate handler is looked up from the interrupt vector table. 
+ Set the PC is set to the handler address 
+ 
+ While an interrupt is being serviced (between the handler being called and the IRET), further interrupts are disabled
+
+
+
+
+
+
 
 ## Stretch Goal: Keyboard Interrupts
 
