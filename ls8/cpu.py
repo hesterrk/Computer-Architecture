@@ -768,14 +768,14 @@ class CPU:
                 sys.exit(0)
 
 
-# # ======================================================
+# # # ======================================================
 # # INTERRUPT: in run func
 #     while datetime.datetime.now() == 1000:
 #     # Fire an interrupt
 #     # 1. set bit 0 of the self.reg[6] to 1
 #         self.reg[self.IS] = 10000000
 # # 2. Check to see if bit 0 of the IS register is set
-#         if self.reg[self.IS] = 10000000
+#         if self.reg[self.IS] = 10000000:
 # # 3. IF yes:
 #     # The IM register  is bitwise AND-ed with the IS register and the results stored as `maskedInterrupts`. This masks out all the interrupts we're not interested in, leaving the ones we are interested in:
 #      # Each bit of maskedInterrupts is checked, starting from 0 and going up to the 7th bit, one for each interrupt 
@@ -788,5 +788,7 @@ class CPU:
 
 #     #  4. Push the registers on the stack, look up the IH address in the interupt vector table at address '0xF8' and set the PC to it
 #     # Value to grt address --> self.ram[0xF8]
+
+
 
 # # 4. When hit IRET instruction: signals a return from IH, the registers and PC are popped off the stack and execution continues
