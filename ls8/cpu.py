@@ -67,6 +67,47 @@ JMP = 0b01010100
 # Takes one argument: the register number
 JNE = 0b01010110
 
+# AND
+    # Takes in 2 arguments 
+    # Handled by ALU
+AND = 0b10101000
+
+# OR
+    # Takes in 2 arguments
+    # Handled by ALU
+OR = 0b10101010
+
+# XOR
+    # Takes in 2 arguments
+    # Handled by ALU
+XOR = 0b10101011
+
+
+#NOT
+    # Does a bitwise-NOT on the value in a register, storing the result in the register
+    # Takes in one argument
+    # Handled by ALU
+NOT = 0b01101001
+
+# SHL
+    # Shifts the value in regA left by the number of bits specified in regB, filling the low bits with 0
+    # Takes in 2 arguments
+    # Handled by ALU
+SHL = 0b10101100
+
+# SHR
+    # Shift the value in regA right by the number of bits specified in regB, filling the high bits with 0
+    # Takes in 2 arguments
+    # Handled by ALU
+SHR = 0b10101101
+
+# MOD 
+    # Divides the value in regA by the value in regB, stores the remainder (the modulo) of the result in regA
+    # Handled by ALU
+    # Takes in 2 arguments
+MOD = 0b10100100
+
+
 
 
 class CPU:
@@ -136,6 +177,22 @@ class CPU:
         self.branchtable[JMP] = self.JMP
         # Passing in JNE as key to branch_table dict with value as the function for JNE
         self.branchtable[JNE] = self.JNE
+        # Passing in AND as key to branch_table dict with value as the function for AND
+        self.branchtable[AND] = self.AND
+        # Passing in OR as key to branch_table dict with value as the function for OR
+        self.branchtable[OR] = self.OR
+        # Passing in XOR as key to branch_table dict with value as the function for XOR
+        self.branchtable[XOR] = self.XOR
+        # Passing in NOT as key to branch_table dict with value as the function for NOT
+        self.branchtable[NOT] = self.NOT
+        # Passing in SHL as key to branch_table dict with value as the function for SHL
+        self.branchtable[SHL] = self.SHL
+        # Passing in SHR as key to branch_table dict with value as the function for SHR
+        self.branchtable[SHR] = self.SHR
+        # Passing in MOD as key to branch_table dict with value as the function for MOD
+        self.branchtable[MOD] = self.MOD
+
+
 
 
     def load(self, filename):
@@ -209,7 +266,8 @@ class CPU:
         # Assigning the value to the address passed into this func in RAM
         self.ram[mar] = write_value
 
-    def alu(self, op, reg_a, reg_b):
+    #reg_b optional arg to cater for NOT instruction
+    def alu(self, op, reg_a, reg_b=None):
         """ALU operations."""
         # ADD operation
         if op == "ADD":
@@ -232,6 +290,50 @@ class CPU:
             elif self.reg[reg_a] == self.reg[reg_b]:
                 # If the value at regA is equal to regB, add 1's to the 'E' bits on the FL bits (end)
                 self.flag_bits = 0b00000001
+        
+        elif op == "AND":
+        # Uses bitwise '&' operator: compares regA and regB values and stores result in regA
+        # Compares each column of value of both: any time the value for both is '1' it returns 1 as result for that column
+            self.reg[reg_a] = self.reg[reg_a] & self.reg[reg_b]
+        
+        elif op == "OR":
+        # Uses bitwise '|' operator: compares regA and regB values and stores result in regA
+        # Compares each column of value of both: any time the value for either or both is '1' it returns 1 as result for that column
+            self.reg[reg_a] = self.reg[reg_a] | self.reg[reg_b]
+
+        
+        elif op == "XOR":
+        # Uses bitwise '^' operator: compares regA and regB values and stores result in regA
+        # Compares each column of value of both: any time the value for either is '1' it returns 1 as result for that column
+            self.reg[reg_a] = self.reg[reg_a] ^ self.reg[reg_b]
+        
+        elif op == "NOT":
+        # Does a bitwise-NOT on the value in the given register, storing the result in the same register
+        # Uses bitwise '~' operator
+            self.reg[reg_a] = ~self.reg[reg_a]
+        
+        elif op == "SHL":
+        # Shifts the value in regA left by the number of bits specified in regB (filling the low bits with 0)
+        # Uses bitwise '<<' operator
+            self.reg[reg_a] = self.reg[reg_a] << self.reg[reg_b]
+        
+        elif op == "SHR":
+        # Shifts the value in regA right by the number of bits specified in regB (filling the low bits with 0)
+        # Uses bitwise '>>' operator
+            self.reg[reg_a] = self.reg[reg_a] >> self.reg[reg_b]
+
+        
+        elif op == "MOD":
+        # Divides the value in regA by the value in regB, stores the remainder (the modulo) of the result in regA
+        # Uses modulo operator: %
+        # If the value in the second register is 0, the system should print an error message and halt (self.HLT)
+            if self.reg[reg_b] == 0:
+                print('Error')
+            # Get the CPU to halt by calling our HLT function which sets running to false
+                self.HLT()
+        # Else, if the value in reg_b is not 0
+            self.reg[reg_a] %= self.reg[reg_b]
+
 
         else:
             raise Exception("Unsupported ALU operation")
@@ -435,7 +537,6 @@ class CPU:
 
     # JNE func
     # Jumps to an address in given register if the equal flag is clear (false/0)
-
     def JNE(self):
         # Get the reg number self.pc + 1 points too
         reg_num = self.ram_read(self.pc + 1)
@@ -447,6 +548,99 @@ class CPU:
         else:
             # Go to next instruction (this one is 2 bytes long)
             self.pc += 2
+
+    # AND func  
+    # Calls the alu() func (carries out maths)
+    def AND(self):
+    # When carrying out this instruction self.pc will point to this instruction number
+            # the 2 args that follow this instruc. numb in the spec are regA and regB, which can be accessed by doing pc+1 and pc+2, so both instruc variables gives us the value held at both of these registers 
+        instruc_a = self.ram_read(self.pc + 1)
+        instruc_b = self.ram_read(self.pc + 2)
+        # Pass in type of operation (AND), registerA(instrucA), registerB(instrucB)
+        self.alu("AND", instruc_a, instruc_b)
+        # It's 2 arguments plus instruction so have to increment pc by 3
+        self.pc += 3
+
+
+    # OR func  
+    # Calls the alu() func (carries out maths)
+    def OR(self):
+    # When carrying out this instruction self.pc will point to this instruction number
+            # the 2 args that follow this instruc. numb in the spec are regA and regB, which can be accessed by doing pc+1 and pc+2, so both instruc variables gives us the value held at both of these registers 
+        instruc_a = self.ram_read(self.pc + 1)
+        instruc_b = self.ram_read(self.pc + 2)
+        # Pass in type of operation (OR), registerA(instrucA), registerB(instrucB)
+        self.alu("OR", instruc_a, instruc_b)
+        # It's 2 arguments plus instruction so have to increment pc by 3
+        self.pc += 3
+
+    # XOR func  
+    # Calls the alu() func (carries out maths)
+    def XOR(self):
+    # When carrying out this instruction self.pc will point to this instruction number
+            # the 2 args that follow this instruc. numb in the spec are regA and regB, which can be accessed by doing pc+1 and pc+2, so both instruc variables gives us the value held at both of these registers 
+        instruc_a = self.ram_read(self.pc + 1)
+        instruc_b = self.ram_read(self.pc + 2)
+        # Pass in type of operation (XOR), registerA(instrucA), registerB(instrucB)
+        self.alu("XOR", instruc_a, instruc_b)
+        # It's 2 arguments plus instruction so have to increment pc by 3
+        self.pc += 3
+
+    
+    # NOT func  
+    # Calls the alu() func (carries out maths)
+    def NOT(self):
+    # When carrying out this instruction self.pc will point to this instruction number
+            # the 1 arg that follow this instruc. numb in the spec are regA which is  accessed by doing pc+1 so instruc_a  gives us the value held at both the register number 
+        instruc_a = self.ram_read(self.pc + 1)
+        # Pass in type of operation (NOT), registerA(instrucA)
+        self.alu("NOT", instruc_a)
+        # It's 1 arguments plus instruction so have to increment pc by 2
+        self.pc += 2
+
+    
+    # SHL func  
+    # Calls the alu() func (carries out maths)
+    def SHL(self):
+    # When carrying out this instruction self.pc will point to this instruction number
+            # the 2 args that follow this instruc. numb in the spec are regA and regB, which can be accessed by doing pc+1 and pc+2, so both instruc variables gives us the value held at both of these registers 
+        instruc_a = self.ram_read(self.pc + 1)
+        instruc_b = self.ram_read(self.pc + 2)
+        # Pass in type of operation (shl), registerA(instrucA), registerB(instrucB)
+        self.alu("SHL", instruc_a, instruc_b)
+        # It's 2 arguments plus instruction so have to increment pc by 3
+        self.pc += 3
+    
+    # SHR func  
+    # Calls the alu() func (carries out maths)
+    def SHR(self):
+    # When carrying out this instruction self.pc will point to this instruction number
+            # the 2 args that follow this instruc. numb in the spec are regA and regB, which can be accessed by doing pc+1 and pc+2, so both instruc variables gives us the value held at both of these registers 
+        instruc_a = self.ram_read(self.pc + 1)
+        instruc_b = self.ram_read(self.pc + 2)
+        # Pass in type of operation (SHR), registerA(instrucA), registerB(instrucB)
+        self.alu("SHR", instruc_a, instruc_b)
+        # It's 2 arguments plus instruction so have to increment pc by 3
+        self.pc += 3
+
+    
+    # MOD func  
+    # Calls the alu() func (carries out maths)
+    def MOD(self):
+    # When carrying out this instruction self.pc will point to this instruction number
+            # the 2 args that follow this instruc. numb in the spec are regA and regB, which can be accessed by doing pc+1 and pc+2, so both instruc variables gives us the value held at both of these registers 
+        instruc_a = self.ram_read(self.pc + 1)
+        instruc_b = self.ram_read(self.pc + 2)
+        # Pass in type of operation (MOD), registerA(instrucA), registerB(instrucB)
+        self.alu("MOD", instruc_a, instruc_b)
+        # It's 2 arguments plus instruction so have to increment pc by 3
+        self.pc += 3
+
+    
+    
+
+
+
 
     def trace(self):
         """
