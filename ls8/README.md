@@ -296,7 +296,11 @@ a high address) and grows _downward_ as things are pushed on. The LS-8 is no
 exception to this.
 
 Implement a system stack per the spec. Add `PUSH` and `POP` instructions. Read
-  the beginning of the spec to see which register is the stack pointer. 
+  the beginning of the spec to see which register is the stack pointer:
+ ==> The SP points at the value at the top of the stack (most recently pushed), or at
+address `F4` if the stack is empty
+:R7 is reserved as the stack pointer (SP): R7 contains a value which is the index into RAM for the top of the stack
+
   
 * Values themselves should be saved in the ***portion of RAM*** _that is allocated for the stack_. 
   -  Use the stack pointer to modify the correct block of memory. 
@@ -350,6 +354,10 @@ If you run `python3 ls8.py examples/call.ls8` you should see the output:
 ```
 
 ## Stretch Goal: Timer Interrupts
+
+--> IRET instruction:
+:return from interupt handler
+
 
 Add interrupts to the LS-8 emulator.
 
@@ -427,6 +435,7 @@ Bitwise-AND the IM register with the IS register. This masks out all the
 interrupts we're not interested in, leaving the ones we are interested in:
 
 ```python
+--> All the possible interputs against the ones that are actually active 
 masked_interrupts = cpu.reg[IM] & cpu.reg[IS]
 ```
 
@@ -444,6 +453,32 @@ for i in range(8):
 executing the current instruction as per usual.)
 
 If `interrupt_happened`, check the LS-8 spec for details on what to do.
+
+
+EXTRA COMMENTS
+
+
+
+ 
+Stop further checking of maskedInterrupts 
+ 
+ If a bit is set and can interrupt now 
+ Disable further interrupts 
+ Clear the bit in the IS register 
+ The PC register is pushed on the stack ´
+ The FL register is pushed on the stack 
+ Registers R0-R6 are pushed on the stack in that order 
+ 
+ The address / vector of the appropriate handler is looked up from the interrupt vector table. 
+ Set the PC is set to the handler address 
+ 
+ While an interrupt is being serviced (between the handler being called and the IRET), further interrupts are disabled
+
+
+
+
+
+
 
 ## Stretch Goal: Keyboard Interrupts
 
